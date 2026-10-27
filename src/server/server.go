@@ -25,6 +25,7 @@ import (
 	"OpenLinkHub/src/stats"
 	"OpenLinkHub/src/systeminfo"
 	"OpenLinkHub/src/systray"
+	"OpenLinkHub/src/telemetry"
 	"OpenLinkHub/src/temperatures"
 	"OpenLinkHub/src/templates"
 	"OpenLinkHub/src/version"
@@ -929,6 +930,61 @@ func updateDeviceEqualizers(w http.ResponseWriter, r *http.Request) {
 // updateRgbProfile handles device rgb profile update
 func updateRgbProfile(w http.ResponseWriter, r *http.Request) {
 	request := requests.ProcessUpdateRgbProfile(r)
+	resp := &Response{
+		Code:    request.Code,
+		Status:  request.Status,
+		Message: request.Message,
+	}
+	resp.Send(w)
+}
+
+// getTelemetrySensors returns the logged sensors
+func getTelemetrySensors(w http.ResponseWriter, _ *http.Request) {
+	resp := &Response{
+		Code:   http.StatusOK,
+		Status: 1,
+		Data:   telemetry.GetSensors(),
+	}
+	resp.Send(w)
+}
+
+// getTelemetrySeries returns history and statistics for one sensor
+func getTelemetrySeries(w http.ResponseWriter, r *http.Request) {
+	key, valid := getVar("/api/telemetry/series/", r)
+	if !valid {
+		resp := &Response{Code: http.StatusOK, Status: 0, Message: language.GetValue("txtNoMonitoringData")}
+		resp.Send(w)
+		return
+	}
+
+	seconds := 3600
+	if val, err := strconv.Atoi(r.URL.Query().Get("seconds")); err == nil {
+		seconds = val
+	}
+
+	series := telemetry.GetSeries(key, seconds)
+	if series == nil {
+		resp := &Response{Code: http.StatusOK, Status: 0, Message: language.GetValue("txtNoMonitoringData")}
+		resp.Send(w)
+		return
+	}
+	resp := &Response{Code: http.StatusOK, Status: 1, Data: series}
+	resp.Send(w)
+}
+
+// getTelemetrySettings returns monitoring settings with every known sensor
+func getTelemetrySettings(w http.ResponseWriter, _ *http.Request) {
+	resp := &Response{
+		Code:   http.StatusOK,
+		Status: 1,
+		Data:   telemetry.GetSettings(),
+	}
+	resp.Send(w)
+}
+
+// updateTelemetrySettings handles monitoring settings changes
+func updateTelemetrySettings(w http.ResponseWriter, r *http.Request) {
+	request := requests.ProcessUpdateTelemetrySettings(r)
 	resp := &Response{
 		Code:    request.Code,
 		Status:  request.Status,
@@ -2244,6 +2300,36 @@ func uiIndex(w http.ResponseWriter, _ *http.Request) {
 	}
 }
 
+// uiMonitoring handles the temperature monitoring page
+func uiMonitoring(w http.ResponseWriter, _ *http.Request) {
+	deviceList := devices.GetDevices()
+	web := templates.Web{}
+	web.Title = dashboard.GetDashboard().PageTitle
+	web.Devices = deviceList
+	web.BuildInfo = version.GetBuildInfo()
+	web.SystemInfo = systeminfo.GetInfo()
+	web.CpuTemp = dashboard.GetDashboard().TemperatureToString(temperatures.GetCpuTemperature())
+	web.GpuTemp = dashboard.GetDashboard().TemperatureToString(temperatures.GetGpuTemperature())
+	web.Dashboard = dashboard.GetDashboard()
+	web.BatteryStats = stats.GetBatteryStats()
+	web.Page = "monitoring"
+
+	t := templates.GetTemplate()
+	for header := range headers {
+		w.Header().Set(headers[header].Key, headers[header].Value)
+	}
+
+	err := t.ExecuteTemplate(w, "monitoring.html", web)
+	if err != nil {
+		fmt.Println(err)
+		resp := &Response{
+			Code:    http.StatusInternalServerError,
+			Message: language.GetValue("txtUnableToServeWebContent"),
+		}
+		resp.Send(w)
+	}
+}
+
 // uiTemperatureOverview handles overview of temperature profiles
 func uiTemperatureOverview(w http.ResponseWriter, _ *http.Request) {
 	web := templates.Web{}
@@ -2668,6 +2754,9 @@ func setRoutes() http.Handler {
 	handleFunc(r, "/api/color/override/", http.MethodGet, getCommanderDuoOverride)
 	handleFunc(r, "/api/temperatures/", http.MethodGet, getTemperature)
 	handleFunc(r, "/api/temperatures/graph/", http.MethodGet, getTemperatureGraph)
+	handleFunc(r, "/api/telemetry/sensors", http.MethodGet, getTelemetrySensors)
+	handleFunc(r, "/api/telemetry/series/", http.MethodGet, getTelemetrySeries)
+	handleFunc(r, "/api/telemetry/settings", http.MethodGet, getTelemetrySettings)
 	handleFunc(r, "/api/input/media", http.MethodGet, getMediaKeys)
 	handleFunc(r, "/api/input/keyboard", http.MethodGet, getInputKeys)
 	handleFunc(r, "/api/input/mouse", http.MethodGet, getMouseButtons)
@@ -2806,6 +2895,7 @@ func setRoutes() http.Handler {
 	handleFunc(r, "/api/temperatures/update", http.MethodPut, updateTemperatureProfile)
 	handleFunc(r, "/api/temperatures/updateGraph", http.MethodPut, updateTemperatureProfileGraph)
 	handleFunc(r, "/api/temperatures/edit", http.MethodPut, editTemperatureProfile)
+	handleFunc(r, "/api/telemetry/settings/update", http.MethodPut, updateTelemetrySettings)
 	handleFunc(r, "/api/lcd/modes", http.MethodPut, updateLcdProfile)
 	handleFunc(r, "/api/userProfile", http.MethodPut, saveUserProfile)
 	handleFunc(r, "/api/keyboard/profile/new", http.MethodPut, saveDeviceProfile)
@@ -2827,6 +2917,7 @@ func setRoutes() http.Handler {
 
 	if config.GetConfig().Frontend {
 		handleFunc(r, "/", http.MethodGet, uiIndex)
+		handleFunc(r, "/monitoring", http.MethodGet, uiMonitoring)
 		handleFunc(r, "/device/", http.MethodGet, uiDeviceOverview)
 		handleFunc(r, "/temperature", http.MethodGet, uiTemperatureOverview)
 		handleFunc(r, "/temperatureGraphs", http.MethodGet, uiTemperatureGraphOverview)

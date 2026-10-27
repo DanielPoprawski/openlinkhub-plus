@@ -2262,6 +2262,49 @@ table.dataTable.compact tbody td {
     box-sizing: border-box;
 }
 
+.telemetry-canvas {
+    width: 100%;
+    height: 240px;
+    display: block;
+}
+
+.telemetry-histogram {
+    width: 100%;
+    height: 170px;
+    display: block;
+}
+
+.telemetry-scale {
+    width: 100%;
+    height: 420px;
+    display: block;
+    align-self: flex-start;
+}
+
+.monitoring-toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+.range-selector {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.system-button.active {
+    color: var(--text-main);
+    border-color: #42a5f5;
+}
+
+.monitoring-stat {
+    font-size: 1.1rem;
+    font-weight: 700;
+}
+
 .profile-actions {
     display: inline-flex;
     gap: 8px;

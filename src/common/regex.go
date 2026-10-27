@@ -15,6 +15,7 @@ var (
 	AlphanumericDashSemiColon = regexp.MustCompile(`^[a-zA-Z0-9-;:]+$`)
 	AlphanumericUnderscore    = regexp.MustCompile(`^[a-zA-Z0-9_]+$`)
 	AlphanumericUnderDashPath = regexp.MustCompile(`^[a-zA-Z0-9_\-/]+$`)
+	AlphanumericUnderDash     = regexp.MustCompile(`^[a-zA-Z0-9_-]+$`)
 	AlphanumericUnderColon    = regexp.MustCompile(`^[a-zA-Z0-9_:-]+$`)
 	AlphanumericDisplayName   = regexp.MustCompile(`^[a-zA-Z0-9#.:_ -]*$`)
 )

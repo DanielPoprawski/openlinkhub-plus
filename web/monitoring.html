@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+{{ template "head" . }}
+<body>
+
+<div class="container-fluid">
+    {{ $root := . }}
+    <div class="row">
+        <!-- Sidebar -->
+        {{ template "sidebar" . }}
+
+        <!-- Main -->
+        <main class="main-content p-4">
+            <!-- Temperature bar -->
+            {{ if .Dashboard.TemperatureBar }}
+            {{ template "temperature-bar" . }}
+            {{ end }}
+
+            <!-- Settings modal -->
+            <div class="modal fade text-start" id="monitoringSettingsModal" tabindex="-1" aria-labelledby="monitoringSettingsLabel" aria-hidden="true">
+                <div class="modal-dialog modal-custom modal-600">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title" id="monitoringSettingsLabel">{{ .Lang "txtMonitoringSettings" }}</h5>
+                            <button class="btn-close btn-close-white" type="button" data-bs-dismiss="modal" aria-label="Close"></button>
+                        </div>
+                        <div class="modal-body modal-title">
+                            <div class="settings-list">
+                                <div class="settings-row">
+                                    <span class="settings-label text-ellipsis">{{ .Lang "txtMonitoringEnabled" }}</span>
+                                    <label class="system-toggle compact">
+                                        <input type="checkbox" id="monitoringEnabled">
+                                        <span class="toggle-track"></span>
+                                    </label>
+                                </div>
+
+                                <div class="settings-row">
+                                    <span class="settings-label text-ellipsis">{{ .Lang "txtSamplingInterval" }}</span>
+                                    <div class="system-input text-input">
+                                        <label for="monitoringInterval">
+                                            <input type="number" id="monitoringInterval" min="2" max="3600" step="1">
+                                        </label>
+                                    </div>
+                                </div>
+
+                                <div class="settings-row">
+                                    <span class="settings-label text-ellipsis">{{ .Lang "txtRetentionMode" }}</span>
+                                    <label for="monitoringRetentionMode">
+                                        <select class="form-select system-select auto-width" id="monitoringRetentionMode">
+                                            <option value="time">{{ .Lang "txtRetentionByTime" }}</option>
+                                            <option value="size">{{ .Lang "txtRetentionBySize" }}</option>
+                                        </select>
+                                    </label>
+                                </div>
+
+                                <div class="settings-row">
+                                    <span class="settings-label text-ellipsis" id="monitoringRetentionUnit">{{ .Lang "txtHours" }}</span>
+                                    <div class="system-input text-input">
+                                        <label for="monitoringRetentionAmount">
+                                            <input type="number" id="monitoringRetentionAmount" min="1" step="1">
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="settings-list" style="margin-top: 12px;">
+                                <div class="settings-row">
+                                    <span class="settings-label text-ellipsis">{{ .Lang "txtSensorsToLog" }}</span>
+                                </div>
+                                <div id="monitoringSensors"></div>
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button class="btn btn-secondary" type="button" data-bs-dismiss="modal">{{ .Lang "txtClose" }}</button>
+                            <button class="btn btn-primary" type="button" id="btnSaveMonitoringSettings">{{ .Lang "txtSave" }}</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Toolbar -->
+            <div class="row g-4 mb-4">
+                <div class="col-12">
+                    <div class="card system-card">
+                        <div class="card-body monitoring-toolbar">
+                            <div class="range-selector" id="monitoringRange">
+                                <span class="settings-label text-ellipsis">{{ .Lang "txtMonitoringRange" }}</span>
+                                <button class="system-button compact" type="button" data-seconds="3600">1h</button>
+                                <button class="system-button compact" type="button" data-seconds="21600">6h</button>
+                                <button class="system-button compact" type="button" data-seconds="86400">24h</button>
+                                <button class="system-button compact" type="button" data-seconds="259200">3d</button>
+                                <button class="system-button compact" type="button" data-seconds="0">{{ .Lang "txtAll" }}</button>
+                            </div>
+                            <button class="system-button compact" type="button" title="{{ .Lang "txtMonitoringSettings" }}" data-bs-toggle="modal" data-bs-target="#monitoringSettingsModal">
+                                <i class="bi bi-gear svg-icon svg-icon-sm svg-icon-heavy"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Sensor cards -->
+            <div class="row g-4 align-items-start" id="monitoring-cards" data-celsius="{{ .Dashboard.Celsius }}"></div>
+        </main>
+    </div>
+</div>
+<script src="/static/js/sidebar.js"></script>
+<script src="/static/js/monitoring.js"></script>
+{{ if .Dashboard.TemperatureBar }}
+<script src="/static/js/temperature-bar.js"></script>
+{{ end }}
+</body>
+</html>

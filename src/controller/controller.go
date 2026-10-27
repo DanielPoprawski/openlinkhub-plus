@@ -25,6 +25,7 @@ import (
 	"OpenLinkHub/src/server"
 	"OpenLinkHub/src/stats"
 	"OpenLinkHub/src/systeminfo"
+	"OpenLinkHub/src/telemetry"
 	"OpenLinkHub/src/temperatures"
 	"OpenLinkHub/src/version"
 )
@@ -49,6 +50,7 @@ func Start() {
 	macro.Init()        // Macro
 	motherboards.Init() // Motherboards
 	devices.Init()      // Devices
+	telemetry.Init()    // Temperature history
 	monitor.Init()      // Monitor
 	language.Init()     // Language
 	scheduler.Init()    // Scheduler
@@ -57,6 +59,7 @@ func Start() {
 
 // Stop will stop device control
 func Stop() {
+	telemetry.Stop()    // Flush temperature history
 	devices.Stop()      // Devices
 	inputmanager.Stop() // Cleanup virtual devices
 	audio.StopAudio()   // Virtual Audio

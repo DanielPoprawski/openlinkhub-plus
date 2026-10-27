@@ -20,6 +20,7 @@ import (
 	"OpenLinkHub/src/macro"
 	"OpenLinkHub/src/rgb"
 	"OpenLinkHub/src/scheduler"
+	"OpenLinkHub/src/telemetry"
 	"OpenLinkHub/src/temperatures"
 	"encoding/json"
 	"fmt"
@@ -475,6 +476,57 @@ func ProcessEditTemperatureProfile(r *http.Request) *Payload {
 
 	return &Payload{
 		Message: language.GetValue("txtSpeedProfileUpdated"),
+		Code:    http.StatusOK,
+		Status:  1,
+	}
+}
+
+// ProcessUpdateTelemetrySettings will process monitoring (telemetry) settings changes
+func ProcessUpdateTelemetrySettings(r *http.Request) *Payload {
+	req := telemetry.Settings{}
+	err := json.NewDecoder(r.Body).Decode(&req)
+	if err != nil {
+		logger.Log(map[string]interface{}{"error": err}).Error("Unable to decode JSON")
+		return &Payload{
+			Message: language.GetValue("txtUnableToValidateRequest"),
+			Code:    http.StatusOK,
+			Status:  0,
+		}
+	}
+
+	invalid := &Payload{
+		Message: language.GetValue("txtInvalidMonitoringSettings"),
+		Code:    http.StatusOK,
+		Status:  0,
+	}
+
+	if req.Interval < 2 || req.Interval > 3600 {
+		return invalid
+	}
+	if req.RetentionMode != telemetry.RetentionByTime && req.RetentionMode != telemetry.RetentionBySize {
+		return invalid
+	}
+	if req.RetentionHours < 1 || req.RetentionHours > 8760 {
+		return invalid
+	}
+	if req.RetentionMB < 1 || req.RetentionMB > 10240 {
+		return invalid
+	}
+	for _, key := range req.Disabled {
+		if !common.AlphanumericUnderDash.MatchString(key) {
+			return invalid
+		}
+	}
+
+	if !telemetry.UpdateSettings(req) {
+		return &Payload{
+			Message: language.GetValue("txtMonitoringSettingsNotSaved"),
+			Code:    http.StatusOK,
+			Status:  0,
+		}
+	}
+	return &Payload{
+		Message: language.GetValue("txtMonitoringSettingsSaved"),
 		Code:    http.StatusOK,
 		Status:  1,
 	}

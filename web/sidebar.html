@@ -24,6 +24,12 @@
             {{ .Lang "txtDashboard" }}
             </a>
 
+            <!-- Monitoring -->
+            <a class='nav-link {{ if eq .Page "monitoring" }}active{{ end }}' href="/monitoring" data-label="{{ .Lang "txtMonitoring" }}">
+            <img src="/static/img/icons/icon-monitoring.svg" class="sidebar-icon" alt="">
+            {{ .Lang "txtMonitoring" }}
+            </a>
+
             <!-- Devices -->
             {{ range .Devices }}
             {{ if eq .Hidden true }}
