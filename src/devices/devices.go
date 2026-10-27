@@ -339,6 +339,23 @@ func ResetSpeedProfiles(profile string) {
 	}
 }
 
+// RenameSpeedProfiles will rename the speed profile on each available device
+func RenameSpeedProfiles(oldProfile, newProfile string) {
+	for _, device := range devices {
+		if device.ProductType == common.ProductTypeLinkHub ||
+			device.ProductType == common.ProductTypeCC ||
+			device.ProductType == common.ProductTypeCCXT ||
+			device.ProductType == common.ProductTypeCPro ||
+			device.ProductType == common.ProductTypeElite ||
+			device.ProductType == common.ProductTypeHydro ||
+			device.ProductType == common.ProductTypeCorsairOne ||
+			device.ProductType == common.ProductTypePlatinum ||
+			device.ProductType == common.ProductTypeMotherboard {
+			CallDeviceMethod(device.Serial, "RenameSpeedProfiles", oldProfile, newProfile)
+		}
+	}
+}
+
 // GetDevicesLedData will return led data for all devices
 func GetDevicesLedData() interface{} {
 	var leds []interface{}

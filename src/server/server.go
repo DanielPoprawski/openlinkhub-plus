@@ -970,6 +970,17 @@ func updateTemperatureProfile(w http.ResponseWriter, r *http.Request) {
 	resp.Send(w)
 }
 
+// editTemperatureProfile handles rename / sensor change of temperature profile
+func editTemperatureProfile(w http.ResponseWriter, r *http.Request) {
+	request := requests.ProcessEditTemperatureProfile(r)
+	resp := &Response{
+		Code:    request.Code,
+		Status:  request.Status,
+		Message: request.Message,
+	}
+	resp.Send(w)
+}
+
 // updateTemperatureProfile handles update of temperature profile
 func updateTemperatureProfileGraph(w http.ResponseWriter, r *http.Request) {
 	request := requests.ProcessUpdateTemperatureProfileGraph(r)
@@ -2794,6 +2805,7 @@ func setRoutes() http.Handler {
 	// PUT
 	handleFunc(r, "/api/temperatures/update", http.MethodPut, updateTemperatureProfile)
 	handleFunc(r, "/api/temperatures/updateGraph", http.MethodPut, updateTemperatureProfileGraph)
+	handleFunc(r, "/api/temperatures/edit", http.MethodPut, editTemperatureProfile)
 	handleFunc(r, "/api/lcd/modes", http.MethodPut, updateLcdProfile)
 	handleFunc(r, "/api/userProfile", http.MethodPut, saveUserProfile)
 	handleFunc(r, "/api/keyboard/profile/new", http.MethodPut, saveDeviceProfile)

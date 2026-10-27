@@ -56,7 +56,7 @@ $(document).ready(function () {
     }
 
     document.addEventListener('click', function (e) {
-        if (e.target.closest('.delete-speed-profile')) {
+        if (e.target.closest('.delete-speed-profile') || e.target.closest('.edit-speed-profile')) {
             e.stopPropagation();
         }
     });
@@ -69,13 +69,13 @@ $(document).ready(function () {
         $(this).find('.modal-content').addClass('shake-once');
     });
 
-    $('#btnSaveNewProfile').on('click', function(){
+    function buildProfilePayload() {
         const profile = $("#profileName").val();
         const sensor = $("#sensor").val();
 
         if (profile.length < 3) {
             toast.warning(i18n.t('txtProfileNameTooShort'));
-            return false;
+            return null;
         }
 
         const staticMode = $('#staticCheckbox').is(':checked');
@@ -109,13 +109,47 @@ $(document).ready(function () {
             const binaryPath = $("#binary-probeData").val();
             if (binaryPath.length === 0) {
                 toast.warning('Define path to binary');
-                return false;
+                return null;
             }
             pf["externalExecutable"] = binaryPath;
         }
 
         if (parseInt(sensor) === 8) {
             pf["gpuIndex"] = parseInt($("#gpuIndex").val());
+        }
+        return pf;
+    }
+
+    $('#btnSaveNewProfile').on('click', function(){
+        const pf = buildProfilePayload();
+        if (pf === null) {
+            return false;
+        }
+
+        const editProfile = $("#editProfile").val();
+        if (editProfile.length > 0) {
+            pf["newProfile"] = pf["profile"];
+            pf["profile"] = editProfile;
+            delete pf["static"];
+            delete pf["linear"];
+            $.ajax({
+                url: '/api/temperatures/edit',
+                type: 'PUT',
+                data: JSON.stringify(pf, null, 2),
+                cache: false,
+                success: function(response) {
+                    try {
+                        if (response.status === 1) {
+                            window.location.reload();
+                        } else {
+                            toast.warning(response.message);
+                        }
+                    } catch (err) {
+                        toast.warning(response.message);
+                    }
+                }
+            });
+            return;
         }
 
         const json = JSON.stringify(pf, null, 2);
@@ -138,8 +172,68 @@ $(document).ready(function () {
         });
     });
 
+    $('.edit-speed-profile').on('click', function (e) {
+        e.stopPropagation();
+        const profile = $(this).data('info');
+        $.ajax({
+            url: '/api/temperatures/' + profile,
+            dataType: 'JSON',
+            success: function(response) {
+                if (response.status !== 1) {
+                    toast.warning(response.message);
+                    return;
+                }
+                const d = response.data;
+                $("#editProfile").val(profile);
+                $("#profileName").val(profile);
+                $("#sensor").val(String(d.sensor)).trigger('change');
+                $("#zeroRpmCheckbox").prop('checked', d.zeroRpm === true);
+                $("#static-data").hide();
+
+                switch (d.sensor) {
+                    case 3:
+                        $("#hwmonDeviceId").val(d.device);
+                        break;
+                    case 4:
+                    case 9:
+                        $("#probeData").val(d.device + ';' + d.channelId);
+                        break;
+                    case 6:
+                        $("#hwmon-probeData option").each(function () {
+                            const parts = $(this).val().split(';');
+                            if (parts[1] === d.temperatureInputId && parts[2] === d.hwmonDevice) {
+                                $("#hwmon-probeData").val($(this).val());
+                                return false;
+                            }
+                        });
+                        break;
+                    case 7:
+                        $("#binary-probeData").val(d.device);
+                        break;
+                    case 8:
+                        $("#gpuIndex").val(String(d.gpuIndex));
+                        break;
+                }
+
+                $("#newTempModalLabel").text(i18n.t('txtEditTempProfile'));
+                $("#btnSaveNewProfile").text(i18n.t('txtSave'));
+                $('#newTempModal').modal('show');
+            }
+        });
+    });
+
+    $('#newTempModal').on('hidden.bs.modal', function () {
+        $("#editProfile").val('');
+        $("#profileName").val('');
+        $("#zeroRpmCheckbox").prop('checked', false);
+        $("#sensor").val("0").trigger('change');
+        $("#static-data").show();
+        $("#newTempModalLabel").text(i18n.t('txtNewTempProfile'));
+        $("#btnSaveNewProfile").text(i18n.t('txtCreate'));
+    });
+
     $('.tempList').on('click', function (e) {
-        if ($(e.target).closest('.delete-speed-profile').length) {
+        if ($(e.target).closest('.delete-speed-profile').length || $(e.target).closest('.edit-speed-profile').length) {
             return;
         }
 
@@ -216,7 +310,7 @@ $(document).ready(function () {
     });
 
     $('.tempProfiles').on('click', function (e) {
-        if ($(e.target).closest('.delete-speed-profile').length) {
+        if ($(e.target).closest('.delete-speed-profile').length || $(e.target).closest('.edit-speed-profile').length) {
             return;
         }
 

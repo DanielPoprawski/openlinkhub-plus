@@ -1634,6 +1634,24 @@ func (d *Device) ResetSpeedProfiles(profile string) {
 	}
 }
 
+// RenameSpeedProfiles will point every channel using oldProfile to newProfile
+func (d *Device) RenameSpeedProfiles(oldProfile, newProfile string) {
+	i := 0
+	for _, device := range d.Devices {
+		if device.HasSpeed {
+			if device.Profile == oldProfile {
+				d.Devices[device.ChannelId].Profile = newProfile
+				i++
+			}
+		}
+	}
+
+	if i > 0 {
+		// Save only if something was changed
+		d.saveDeviceProfile()
+	}
+}
+
 // GetTemperatureProbes will return a list of temperature probes
 func (d *Device) GetTemperatureProbes() *[]TemperatureProbe {
 	return d.TemperatureProbes

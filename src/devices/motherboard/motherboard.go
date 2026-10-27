@@ -574,6 +574,23 @@ func (d *Device) ResetSpeedProfiles(profile string) {
 	}
 }
 
+// RenameSpeedProfiles will point every channel using oldProfile to newProfile
+func (d *Device) RenameSpeedProfiles(oldProfile, newProfile string) {
+	i := 0
+	for _, device := range d.Devices {
+		if device.HasSpeed {
+			if device.Profile == oldProfile {
+				d.Devices[device.ChannelId].Profile = newProfile
+				i++
+			}
+		}
+	}
+
+	if i > 0 {
+		d.saveDeviceProfile()
+	}
+}
+
 // getDevices will fetch all devices connected to a hub
 func (d *Device) getDevices() int {
 	var devices = make(map[int]*Devices)

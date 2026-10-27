@@ -56,6 +56,7 @@ type Payload struct {
 	Workers                       int                   `json:"workers"`
 	FrameDelay                    int                   `json:"frameDelay"`
 	Profile                       string                `json:"profile"`
+	NewProfile                    string                `json:"newProfile"`
 	OperatingMode                 int                   `json:"operatingMode"`
 	Label                         string                `json:"label"`
 	Static                        bool                  `json:"static"`
@@ -349,8 +350,6 @@ func ProcessNewTemperatureProfile(r *http.Request) *Payload {
 
 	profile := req.Profile
 	static := req.Static
-	sensor := req.Sensor
-	zeroRpm := req.ZeroRpm
 	linear := req.Linear
 
 	if static && linear {
@@ -377,8 +376,117 @@ func ProcessNewTemperatureProfile(r *http.Request) *Payload {
 		}
 	}
 
-	if sensor > 11 || sensor < 0 {
+	newTemperatureProfile, invalid := validateTemperatureSensor(req)
+	if invalid != nil {
+		return invalid
+	}
+	newTemperatureProfile.Profile = profile
+	newTemperatureProfile.Static = static
+	newTemperatureProfile.Linear = linear
+
+	if temperatures.AddTemperatureProfile(newTemperatureProfile) {
 		return &Payload{
+			Message: language.GetValue("txtSpeedProfileSaved"),
+			Code:    http.StatusOK,
+			Status:  1,
+		}
+	} else {
+		return &Payload{
+			Message: language.GetValue("txtSpeedProfileExists"),
+			Code:    http.StatusOK,
+			Status:  0,
+		}
+	}
+}
+
+// ProcessEditTemperatureProfile will process rename / sensor change of an existing temperature profile
+func ProcessEditTemperatureProfile(r *http.Request) *Payload {
+	req := &Payload{}
+	err := json.NewDecoder(r.Body).Decode(&req)
+	if err != nil {
+		logger.Log(map[string]interface{}{"error": err}).Error("Unable to decode JSON")
+		return &Payload{
+			Message: language.GetValue("txtUnableToValidateRequest"),
+			Code:    http.StatusOK,
+			Status:  0,
+		}
+	}
+
+	profile := req.Profile
+	newProfile := req.NewProfile
+
+	if len(profile) < 3 || len(newProfile) < 3 {
+		return &Payload{
+			Message: language.GetValue("txtProfileNameTooShort"),
+			Code:    http.StatusOK,
+			Status:  0,
+		}
+	}
+
+	if !common.AlphanumericRegex.MatchString(profile) || !common.AlphanumericRegex.MatchString(newProfile) {
+		return &Payload{
+			Message: language.GetValue("txtProfileInvalidName"),
+			Code:    http.StatusOK,
+			Status:  0,
+		}
+	}
+
+	if profile == "Quiet" || profile == "Normal" || profile == "Performance" {
+		return &Payload{
+			Message: language.GetValue("txtBuiltInProfileEdit"),
+			Code:    http.StatusOK,
+			Status:  0,
+		}
+	}
+
+	if temperatures.GetTemperatureProfile(profile) == nil {
+		return &Payload{
+			Message: language.GetValue("txtNonExistingSpeedProfile"),
+			Code:    http.StatusOK,
+			Status:  0,
+		}
+	}
+
+	if profile != newProfile && temperatures.GetTemperatureProfile(newProfile) != nil {
+		return &Payload{
+			Message: language.GetValue("txtSpeedProfileExists"),
+			Code:    http.StatusOK,
+			Status:  0,
+		}
+	}
+
+	data, invalid := validateTemperatureSensor(req)
+	if invalid != nil {
+		return invalid
+	}
+	data.Profile = newProfile
+
+	if !temperatures.UpdateTemperatureProfileSettings(profile, data) {
+		return &Payload{
+			Message: language.GetValue("txtSpeedProfileNotUpdated"),
+			Code:    http.StatusOK,
+			Status:  0,
+		}
+	}
+
+	if profile != newProfile {
+		devices.RenameSpeedProfiles(profile, newProfile)
+	}
+
+	return &Payload{
+		Message: language.GetValue("txtSpeedProfileUpdated"),
+		Code:    http.StatusOK,
+		Status:  1,
+	}
+}
+
+// validateTemperatureSensor validates sensor related fields of a temperature profile request.
+// It returns the resolved sensor data, or an error payload to send back to the client.
+func validateTemperatureSensor(req *Payload) (*temperatures.NewTemperatureProfile, *Payload) {
+	sensor := req.Sensor
+
+	if sensor > 11 || sensor < 0 {
+		return nil, &Payload{
 			Message: language.GetValue("txtInvalidSensorValue"),
 			Code:    http.StatusOK,
 			Status:  0,
@@ -386,7 +494,7 @@ func ProcessNewTemperatureProfile(r *http.Request) *Payload {
 	}
 
 	if sensor == temperatures.SensorTypeMultiGPUs && len(config.GetConfig().NvidiaGpuIndex) < 2 {
-		return &Payload{
+		return nil, &Payload{
 			Message: language.GetValue("txtInvalidSensorValue"),
 			Code:    http.StatusOK,
 			Status:  0,
@@ -404,7 +512,7 @@ func ProcessNewTemperatureProfile(r *http.Request) *Payload {
 		channelId = req.ChannelId
 
 		if len(deviceId) < 1 {
-			return &Payload{
+			return nil, &Payload{
 				Message: language.GetValue("txtInvalidSensorValue"),
 				Code:    http.StatusOK,
 				Status:  0,
@@ -412,7 +520,7 @@ func ProcessNewTemperatureProfile(r *http.Request) *Payload {
 		}
 
 		if channelId < 0 {
-			return &Payload{
+			return nil, &Payload{
 				Message: language.GetValue("txtInvalidSensorValue"),
 				Code:    http.StatusOK,
 				Status:  0,
@@ -425,7 +533,7 @@ func ProcessNewTemperatureProfile(r *http.Request) *Payload {
 	if sensor == temperatures.SensorTypeExternalHwMon {
 		hwmonDeviceId := req.HwmonDeviceId
 		if !common.AlphanumericUnderscore.MatchString(hwmonDeviceId) {
-			return &Payload{
+			return nil, &Payload{
 				Message: language.GetValue("txtInvalidHwMon"),
 				Code:    http.StatusOK,
 				Status:  0,
@@ -434,7 +542,7 @@ func ProcessNewTemperatureProfile(r *http.Request) *Payload {
 
 		temperatureInputId = req.TemperatureInputId
 		if !common.AlphanumericUnderscore.MatchString(temperatureInputId) {
-			return &Payload{
+			return nil, &Payload{
 				Message: language.GetValue("txtInvalidHwMon"),
 				Code:    http.StatusOK,
 				Status:  0,
@@ -443,7 +551,7 @@ func ProcessNewTemperatureProfile(r *http.Request) *Payload {
 
 		hwmonId = req.HwmonDevice
 		if !common.AlphanumericUnderColon.MatchString(hwmonId) {
-			return &Payload{
+			return nil, &Payload{
 				Message: language.GetValue("txtInvalidHwMon"),
 				Code:    http.StatusOK,
 				Status:  0,
@@ -452,7 +560,7 @@ func ProcessNewTemperatureProfile(r *http.Request) *Payload {
 
 		deviceId = fmt.Sprintf("/sys/class/hwmon/%s/%s", hwmonDeviceId, temperatureInputId)
 		if !common.FileExists(deviceId) {
-			return &Payload{
+			return nil, &Payload{
 				Message: language.GetValue("txtInvalidHwMon"),
 				Code:    http.StatusOK,
 				Status:  0,
@@ -462,7 +570,7 @@ func ProcessNewTemperatureProfile(r *http.Request) *Payload {
 
 	if sensor == temperatures.SensorTypeExternalExecutable {
 		if !common.AlphanumericUnderDashPath.MatchString(req.ExternalExecutable) {
-			return &Payload{
+			return nil, &Payload{
 				Message: language.GetValue("txtInvalidExternalFile"),
 				Code:    http.StatusOK,
 				Status:  0,
@@ -470,7 +578,7 @@ func ProcessNewTemperatureProfile(r *http.Request) *Payload {
 		}
 
 		if !common.FileExists(req.ExternalExecutable) {
-			return &Payload{
+			return nil, &Payload{
 				Message: language.GetValue("txtInvalidExternalFile"),
 				Code:    http.StatusOK,
 				Status:  0,
@@ -481,39 +589,22 @@ func ProcessNewTemperatureProfile(r *http.Request) *Payload {
 
 	gpuIndex := req.GpuIndex
 	if gpuIndex < 0 || gpuIndex > 5 {
-		return &Payload{
+		return nil, &Payload{
 			Message: language.GetValue("txtInvalidGpuIndex"),
 			Code:    http.StatusOK,
 			Status:  0,
 		}
 	}
 
-	newTemperatureProfile := &temperatures.NewTemperatureProfile{
-		Profile:            profile,
+	return &temperatures.NewTemperatureProfile{
 		DeviceId:           deviceId,
-		Static:             static,
-		ZeroRpm:            zeroRpm,
-		Linear:             linear,
+		ZeroRpm:            req.ZeroRpm,
 		Sensor:             sensor,
 		ChannelId:          channelId,
 		HwmonDevice:        hwmonId,
 		TemperatureInputId: temperatureInputId,
 		GpuIndex:           gpuIndex,
-	}
-
-	if temperatures.AddTemperatureProfile(newTemperatureProfile) {
-		return &Payload{
-			Message: language.GetValue("txtSpeedProfileSaved"),
-			Code:    http.StatusOK,
-			Status:  1,
-		}
-	} else {
-		return &Payload{
-			Message: language.GetValue("txtSpeedProfileExists"),
-			Code:    http.StatusOK,
-			Status:  0,
-		}
-	}
+	}, nil
 }
 
 // ProcessChangeSpeed will process POST request from a client for fan/pump profile speed change

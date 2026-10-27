@@ -8,6 +8,7 @@
     {{ $device := .Device }}
     {{ $root := . }}
     <input type="hidden" id="profile" name="profile" value="">
+    <input type="hidden" id="editProfile" name="editProfile" value="">
     <div class="row">
         <!-- Sidebar -->
         {{ template "sidebar" . }}
@@ -155,7 +156,7 @@
                                 </div>
                                 {{ end }}
 
-                                <div class="settings-row">
+                                <div class="settings-row" id="static-data">
                                     <span class="settings-label text-ellipsis">{{ .Lang "txtStaticTemp" }}</span>
                                     <label class="system-toggle compact">
                                         <input type="checkbox" class="staticCheckbox" id="staticCheckbox">
@@ -232,9 +233,14 @@
 
                                 <!-- Delete profile -->
                                 <div class="settings-row">
-                                    <span class="settings-label text-ellipsis">{{ $root.Lang "txtDeleteProfile" }}</span>
-                                    <span class="settings-label">
-                                        <span title="Delete Profile"
+                                    <span class="settings-label text-ellipsis">{{ $root.Lang "txtActions" }}</span>
+                                    <span class="settings-label profile-actions">
+                                        <span title="{{ $root.Lang "txtEditProfile" }}"
+                                              class="system-button edit-speed-profile"
+                                              data-info="{{ $key }}">
+                                            <i class="bi bi-pencil svg-icon svg-icon-sm svg-icon-heavy"></i>
+                                        </span>
+                                        <span title="{{ $root.Lang "txtDeleteProfile" }}"
                                               class="system-button danger delete-speed-profile"
                                               data-bs-toggle="modal"
                                               data-bs-target="#deleteTempModal"

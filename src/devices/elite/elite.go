@@ -2319,6 +2319,26 @@ func (d *Device) ResetSpeedProfiles(profile string) {
 	}
 }
 
+// RenameSpeedProfiles will point every channel using oldProfile to newProfile
+func (d *Device) RenameSpeedProfiles(oldProfile, newProfile string) {
+	i := 0
+	for _, device := range d.Devices {
+		if device.ChannelId != 0 {
+			if device.HasSpeed {
+				if device.Profile == oldProfile {
+					d.Devices[device.ChannelId].Profile = newProfile
+					i++
+				}
+			}
+		}
+	}
+
+	if i > 0 {
+		// Save only if something was changed
+		d.saveDeviceProfile()
+	}
+}
+
 // getLiquidTemperature will fetch temperature from AIO device
 func (d *Device) getLiquidTemperature() float32 {
 	for _, device := range d.Devices {

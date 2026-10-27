@@ -2262,6 +2262,11 @@ table.dataTable.compact tbody td {
     box-sizing: border-box;
 }
 
+.profile-actions {
+    display: inline-flex;
+    gap: 8px;
+}
+
 .tempList-selected {
     outline: 1px solid rgba(255,255,255,0.15);
     cursor: pointer;

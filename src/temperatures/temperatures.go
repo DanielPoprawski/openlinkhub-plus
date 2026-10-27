@@ -609,6 +609,49 @@ func UpdateTemperatureProfileGraph(profile string, value TemperatureProfileData)
 	return 1
 }
 
+// UpdateTemperatureProfileSettings will rename a profile and / or change its sensor source.
+// data.Profile holds the new name. Existing curve points are kept.
+func UpdateTemperatureProfileSettings(profile string, data *NewTemperatureProfile) bool {
+	mutex.Lock()
+	defer mutex.Unlock()
+
+	pf, ok := temperatures.Profiles[profile]
+	if !ok {
+		return false
+	}
+
+	pf.Sensor = data.Sensor
+	pf.ZeroRpm = data.ZeroRpm
+	pf.Device = data.DeviceId
+	pf.ChannelId = data.ChannelId
+	pf.HwmonDevice = data.HwmonDevice
+	pf.TemperatureInputId = data.TemperatureInputId
+	pf.GPUIndex = data.GpuIndex
+
+	if pf.Sensor == SensorTypeLiquidTemperature {
+		for key := range pf.Points {
+			for i := range pf.Points[key] {
+				if pf.Points[key][i].X > 60 {
+					pf.Points[key][i].X = 60
+				}
+			}
+		}
+	}
+
+	if err := saveProfileToDisk(data.Profile, pf); err != nil {
+		return false
+	}
+
+	if data.Profile != profile {
+		profileLocation := location + profile + ".json"
+		if err := os.Remove(profileLocation); err != nil {
+			logger.Log(logger.Fields{"error": err, "location": profileLocation, "caller": "UpdateTemperatureProfileSettings()"}).Warn("Unable to delete old speed profile")
+		}
+		delete(temperatures.Profiles, profile)
+	}
+	return true
+}
+
 // DeleteTemperatureProfile will delete temperature profile
 func DeleteTemperatureProfile(profile string) {
 	mutex.Lock()
